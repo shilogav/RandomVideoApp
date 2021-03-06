@@ -54,6 +54,7 @@ class HomeFragment : Fragment() {
             videoAdapter = VideoAdapter(mediaSources, initGlide())
             adapter = videoAdapter
             addItemDecoration(itemDecorator)
+            setMediaSources(mediaSources)
         }
 
     }

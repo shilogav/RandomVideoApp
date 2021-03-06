@@ -15,9 +15,6 @@ class VideoAdapter(mediaSources: ArrayList<MediaSource>, requestManager: Request
     RecyclerView.Adapter<VideoAdapter.VideoPlayerViewHolder>() {
     private var mediaSources: ArrayList<MediaSource> = mediaSources
     private var requestManager: RequestManager = requestManager
-    companion object{
-        const val VIDEO_SAMPLE = "funny_joke.mp4"
-    }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VideoPlayerViewHolder {
         val view = LayoutInflater.from(parent.context)
@@ -53,7 +50,5 @@ class VideoAdapter(mediaSources: ArrayList<MediaSource>, requestManager: Request
                     .load(mediaSource.thumbnail)
                     .into(thumbnail)
         }
-
-
     }
 }

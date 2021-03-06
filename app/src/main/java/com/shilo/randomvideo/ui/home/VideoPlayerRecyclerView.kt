@@ -7,6 +7,7 @@ import android.util.AttributeSet
 import android.util.Log
 import android.view.View
 import android.view.View.OnClickListener
+import android.view.ViewGroup
 import android.view.WindowManager
 import android.widget.FrameLayout
 import android.widget.ImageView
@@ -42,7 +43,7 @@ class VideoPlayerRecyclerView @JvmOverloads constructor(
     private lateinit var thumbnail: ImageView
     private lateinit var progressBar: ProgressBar
     private lateinit var requestManager: RequestManager
-    private lateinit  var volumeControl:ImageView
+    private lateinit var volumeControl:ImageView
     private lateinit var viewHolderParent : View
     private var videoSurfaceDefaultHeight = 0
     private var screenDefaultHeight = 0
@@ -53,7 +54,7 @@ class VideoPlayerRecyclerView @JvmOverloads constructor(
     lateinit var volumeState: VolumeState
     private var playPosition = -1
     private lateinit var frameLayout: FrameLayout
-    private val mediaSources: ArrayList<MediaSource> = ArrayList()
+    private var mediaSources: ArrayList<MediaSource> = ArrayList()
 
     init {
 
@@ -75,19 +76,19 @@ class VideoPlayerRecyclerView @JvmOverloads constructor(
         val renderersFactory = DefaultRenderersFactory(context)
 
         videoPlayer = ExoPlayerFactory.newSimpleInstance(context, trackSelector);
-        val videoSurfaceView = PlayerView(context)
+        videoSurfaceView = PlayerView(context)
         // Bind the player to the view.
         videoSurfaceView.useController = false;
         videoSurfaceView.player = videoPlayer;
-        setVolumeControl(VolumeState.ON);
+
 
         addOnScrollListener(object : OnScrollListener() {
             override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
                 super.onScrollStateChanged(recyclerView, newState)
                 if (newState == SCROLL_STATE_IDLE) {
                     Log.d(TAG, "onScrollStateChanged: called.")
-                    if (thumbnail != null) { // show the old thumbnail
-                        thumbnail.setVisibility(VISIBLE)
+                    if (::thumbnail.isInitialized) { // show the old thumbnail
+                        thumbnail.visibility = VISIBLE
                     }
 
                     // There's a special case when the end of the list has been reached.
@@ -102,13 +103,15 @@ class VideoPlayerRecyclerView @JvmOverloads constructor(
 
         })
 
+        setVolumeControl(VolumeState.ON)
+
         addOnChildAttachStateChangeListener(object : OnChildAttachStateChangeListener {
             override fun onChildViewAttachedToWindow(view: View) {
 
             }
 
             override fun onChildViewDetachedFromWindow(view: View) {
-                if (viewHolderParent != null && viewHolderParent.equals(view))
+                if (::viewHolderParent.isInitialized && viewHolderParent == view)
                     resetVideoView()
             }
 
@@ -143,7 +146,7 @@ class VideoPlayerRecyclerView @JvmOverloads constructor(
 
 
 
-    public fun playVideo(isEndOfList: Boolean) {
+    fun playVideo(isEndOfList: Boolean) {
         var targetPosition = 0
 
         if (!isEndOfList) {
@@ -182,7 +185,7 @@ class VideoPlayerRecyclerView @JvmOverloads constructor(
 
         // set the position of the list-item that is to be played
         playPosition = targetPosition;
-        if (videoSurfaceView == null) {
+        if (!::videoSurfaceView.isInitialized) {
             return;
         }
 
@@ -220,7 +223,6 @@ class VideoPlayerRecyclerView @JvmOverloads constructor(
             videoPlayer.prepare(videoSource)
             videoPlayer.playWhenReady = true
         }
-
     }
 
     private fun videoViewClickListener() = OnClickListener { toggleVolume() }
@@ -266,12 +268,16 @@ class VideoPlayerRecyclerView @JvmOverloads constructor(
     }
 
     private fun removeVideoView(videoView: PlayerView) {
-        frameLayout.addView(videoSurfaceView)
-        isVideoViewAdded = true
-        videoSurfaceView.requestFocus()
-        videoSurfaceView.visibility = VISIBLE
-        videoSurfaceView.alpha = 1f
-        thumbnail.visibility = GONE
+        val parent = videoView.parent as? ViewGroup
+
+        val index = parent?.indexOfChild(videoView)
+        if (index != null) {
+            if (index >= 0) {
+                parent.removeViewAt(index)
+                isVideoViewAdded = false
+                viewHolderParent.setOnClickListener(null)
+            }
+        }
     }
 
     fun releasePlayer() {
@@ -304,21 +310,27 @@ class VideoPlayerRecyclerView @JvmOverloads constructor(
     }
 
     private fun animateVolumeControl() {
-        volumeControl.bringToFront()
-        if(volumeState == VolumeState.OFF){
-            requestManager.load(R.drawable.ic_baseline_volume_off_24)
-                    .into(volumeControl)
-        }
-        else if(volumeState == VolumeState.ON){
-            requestManager.load(R.drawable.ic_baseline_volume_up_24)
-                    .into(volumeControl)
-        }
-        volumeControl.animate().cancel()
+        if (this::volumeControl.isInitialized) {
+            volumeControl.bringToFront()
+            if(volumeState == VolumeState.OFF){
+                requestManager.load(R.drawable.ic_baseline_volume_off_24)
+                        .into(volumeControl)
+            }
+            else if(volumeState == VolumeState.ON){
+                requestManager.load(R.drawable.ic_baseline_volume_up_24)
+                        .into(volumeControl)
+            }
+            volumeControl.animate().cancel()
 
-        volumeControl.alpha = 1f
+            volumeControl.alpha = 1f
 
-        volumeControl.animate()
-                .alpha(0f)
-                .setDuration(600).startDelay = 1000
+            volumeControl.animate()
+                    .alpha(0f)
+                    .setDuration(600).startDelay = 1000
+        }
+    }
+
+    fun setMediaSources(mediaSources: ArrayList<MediaSource>) {
+        this.mediaSources = mediaSources
     }
 }
